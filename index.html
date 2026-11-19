@@ -119,6 +119,16 @@ input:focus,select:focus{outline:none;border-color:var(--gold2);box-shadow:0 0 0
 .eqrow.locked select{background:#efe6d4;color:#8a6a2f;cursor:not-allowed;font-style:italic}
 tr.atk-off td{background:#faf3e6}
 tr.atk-off{border-left:3px solid #b8904a}
+.spell-chip[data-lv]{color:#fff;border:none;font-weight:600}
+.spell-chip .lvb{display:inline-block;min-width:16px;padding:0 4px;margin-right:4px;border-radius:8px;background:#fff3;font-size:11px}
+.spell-chip .info{margin-left:6px;opacity:.85;cursor:help}
+.pip.lv{border-color:var(--pipc)}
+.pip.lv:not(.used){background:var(--pipc)}
+.pip.lv.used{background:transparent;opacity:.45}
+.slv[data-lv]{color:#fff;border-radius:6px;padding:1px 6px}
+.conc-line.conc-on{background:#efe3f7;border:1.5px solid #8e44ad;border-radius:6px;padding:4px 6px}
+.spell-legend{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}
+.spell-legend span{font-size:11px;color:#fff;border-radius:6px;padding:1px 6px}
 .style-box{margin:4px 0 10px;padding:8px 10px;border:1.5px solid #b8904a;border-radius:8px;background:#fffdf5}
 .style-box.none{border-style:dashed;background:#fbf7ec}
 .style-box label{display:block;font-weight:600;color:#7a4f14;margin-bottom:4px}
@@ -852,6 +862,7 @@ function renderSheet(){
   const c=data[current];
   const lv=levelFromXP(c.xp);
   const pb=profBonus(lv);
+  syncSlots(c);
   const nextThresh=lv<20?XP_TABLE[lv]:XP_TABLE[19];
   const curThresh=XP_TABLE[lv-1];
   const pct=lv>=20?100:Math.round((c.xp-curThresh)/(nextThresh-curThresh)*100);
@@ -971,7 +982,7 @@ function renderSheet(){
       ${encombrementHTML(c)}
       <div class="hd-conc">
         <div class="hd-line">🎲 <b>Dés de vie</b> : ${(c.hd!==undefined?c.hd:levelFromXP(c.xp))} / ${levelFromXP(c.xp)} <span class="tiny">(d${hitDie(c.classe)}, dépensés au repos court)</span></div>
-        <div class="conc-line">🧠 <b>Concentration</b> : ${c.concentration?esc(c.concentration):"—"}</div>
+        <div class="conc-line ${c.concentration?'conc-on':''}">🧠 <b>Concentration</b> : ${c.concentration?esc(c.concentration):"—"}${c.concentration?` <button class="mini" onclick="endConcentration(data[current],'arrêt volontaire');renderSheet();if(typeof lockPlayerSheet==='function')lockPlayerSheet();" title="Mettre fin à la concentration">✖ Arrêter</button><div class="tiny">Si vous subissez des dégâts : jet de CON, DD 10 ou moitié des dégâts (bonus ${(()=>{const v=concSaveBonus(c);return (v>=0?'+':'')+v;})()}). Annoncez-le au MJ.</div>`:''}</div>
       </div>
     </div>
 
@@ -1031,7 +1042,7 @@ function renderSheet(){
         const cur=c.style||""; const sel=styleObj(cur);
         return `<div class="style-box">
           <label>🛡⚔️ Style de combat <span class="tiny">(annoncé au MJ — appliqué aux calculs)</span></label>
-          <select onchange="setStyle(this.value)">
+          <select data-style="1" onchange="setStyle(this.value)">
             <option value="">— aucun style choisi —</option>
             ${FIGHTING_STYLES.map(s=>`<option value="${s.k}" ${cur===s.k?'selected':''}>${esc(s.nom)} — ${esc(s.eff)}</option>`).join("")}
           </select>
@@ -1084,18 +1095,21 @@ function renderSheet(){
       <div class="slots">
         ${[1,2,3,4,5,6,7,8,9].map(nv=>{const tot=Number((c.slots[nv]||{}).total)||0;const used=Number((c.slots[nv]||{}).used)||0;return `
           <div class="slotlvl">
-            <div class="slv">Niv ${nv}</div>
+            <div class="slv" data-lv="${nv}" style="background:${SPELL_LV_COL[nv]}">Niv ${nv}</div>
             <div class="pips">${renderPips(nv,tot,used)}</div>
             <div class="slotctrl">
-              <button class="mini" onclick="slotTotal(${nv},-1)">−</button>
+              
               <span class="tiny">${used}/${tot}</span>
-              <button class="mini" onclick="slotTotal(${nv},1)">+</button>
+              
             </div>
           </div>`;}).join("")}
       </div>
 
       <label style="margin-top:12px">Sorts connus / préparés</label>
-      <div class="spell-list">${(c.sorts||"").split("\n").map(l=>l.trim()).filter(Boolean).map(l=>`<button class="spell-chip" onclick="showSpell('${esc(l).replace(/'/g,"")}')" title="Voir la fiche du sort">🔮 ${esc(l)}</button>`).join("")||'<span class="tiny">Aucun sort listé.</span>'}</div>
+      <div class="spell-legend">${SPELL_LV_COL.map((col,n)=>`<span style="background:${col}">${n===0?'Mineur (0)':'Niv '+n}</span>`).join("")}</div>
+      <div class="spell-list">${(c.sorts||"").split("\n").map(l=>l.trim()).filter(Boolean).map(l=>{const lv=spellLv(l);const nm=esc(l).replace(/'/g,"");const col=lv===null?"#9a8a6a":SPELL_LV_COL[lv];
+        return `<button class="spell-chip" data-lv="${lv===null?'?':lv}" style="background:${col}" onclick="castFromSheet('${nm}')" title="${lv===null?'Sort non répertorié — cliquer pour la fiche':(lv===0?'Sort mineur : gratuit':'Lancer : utilise un emplacement de niveau '+lv)}"><span class="lvb">${lv===null?'?':lv}</span>${esc(l)}<span class="info" onclick="event.stopPropagation();showSpell('${nm}')" title="Voir la fiche du sort">ℹ️</span></button>`;}).join("")||'<span class="tiny">Aucun sort listé.</span>'}</div>
+      <div class="tiny">Cliquez un sort pour le <b>lancer</b> (un emplacement de son niveau est occupé ; s'il n'en reste plus, proposition de monter d'un niveau). ℹ️ = fiche du sort.</div>
           <textarea oninput="upd('sorts',this.value)" placeholder="Un sort par ligne : Projectile magique, Bouclier, Boule de feu…" style="width:100%;min-height:80px;font-family:var(--font);font-size:14px;color:var(--ink);background:#fffdf5;border:1.5px solid var(--line);border-radius:6px;padding:8px;margin-top:6px">${esc(c.sorts)}</textarea>
           <div class="tiny">Cliquez une puce 🔮 pour afficher la fiche du sort. Éditez la liste dans la zone ci-dessous (un sort par ligne).</div>
     </div>
@@ -1798,6 +1812,8 @@ function lockPlayerSheet(){
   sh.querySelectorAll("input,select,textarea").forEach(el=>{
     // ...SAUF le champ des PV actuels (repéré par un data-attribut qu'on pose au rendu)
     if(el.getAttribute("data-pv-cur")==="1")return;
+    // Setup de combat choisi par le joueur : emplacements d'équipement + style de combat restent modifiables
+    if(el.hasAttribute("data-eq") || el.hasAttribute("data-style"))return;
     el.setAttribute("disabled","disabled");
     el.style.opacity="0.85";
   });
@@ -1806,7 +1822,7 @@ function lockPlayerSheet(){
   sh.querySelectorAll("button").forEach(b=>{
     const kept=/−|\+|PV|Repos|Partager|Recevoir|Scanner|Copier|📷|📤|📥|♂|♀|QR/i.test(b.textContent||"");
     const onclick=(b.getAttribute("onclick")||"");
-    const keptFn=/partyHp|shortRest|longRest|showShareFor|dmImportPrompt|scanToImport|setGenre|renderQrInline|navigator\.clipboard|toggle/i.test(onclick);
+    const keptFn=/castFromSheet|showSpell|endConcentration|partyHp|shortRest|longRest|showShareFor|dmImportPrompt|scanToImport|setGenre|renderQrInline|navigator\.clipboard|toggle/i.test(onclick);
     if(!kept && !keptFn){ b.style.display="none"; }
   });
 }
@@ -1827,7 +1843,7 @@ function renderAll(){
 // ---------- Actions ----------
 function setStyle(k){
   const c=data[current]; c.style=k||"";
-  save(true); renderSheet();
+  save(true); renderSheet(); lockPlayerSheet();
   const s=styleObj(k); flashMsg(s?("🛡 Style appliqué : "+s.nom+" — "+s.eff):"Style de combat retiré.");
 }
 function setGenre(v){
@@ -2301,14 +2317,107 @@ function silhouetteSVG(c){
   return svg;
 }
 
+
+// ===== Lancer un sort depuis la fiche : occupe un emplacement de son niveau =====
+const SPELL_LV_COL=["#7a8a7a","#3f7fbf","#3a9a5a","#c9a227","#d9772b","#c0392b","#8e44ad","#2c3e8f","#5d4037","#111111"];
+function spellLv(name){const sp=findSpell(name);return sp?Number(sp.niv)||0:null;}
+function castFromSheet(name){
+  const c=data[current]; if(!c)return;
+  const sp=findSpell(name);
+  if(!sp){showSpell(name);return;}
+  const niv=Number(sp.niv)||0;
+  if(sp.conc && c.concentration && c.concentration!==sp.nom){
+    if(!confirm("🧠 "+(c.nom||"Ce lanceur")+" se concentre déjà sur « "+c.concentration+" ».\nLancer « "+sp.nom+" » met fin à ce sort. Continuer ?"))return;
+  }
+  if(niv===0){if(sp.conc){if(c.concentration&&c.concentration!==sp.nom)endConcentration(c,"remplacé par "+sp.nom);c.concentration=sp.nom;save(true);renderSheet();if(typeof lockPlayerSheet==="function")lockPlayerSheet();}
+    flashMsg("✨ "+sp.nom+" : sort mineur (niv.0), gratuit — aucun emplacement utilisé.");return;}
+  syncSlots(c);
+  const free=n=>{const s=c.slots[n]||{total:0,used:0};return (Number(s.total)||0)-(Number(s.used)||0);};
+  let use=null;
+  if(free(niv)>0)use=niv;
+  else{
+    for(let n=niv+1;n<=9;n++){if(free(n)>0){use=n;break;}}
+    if(use===null){alert("⚠ Plus aucun emplacement de niveau "+niv+" ou supérieur pour « "+sp.nom+" ».\nUn repos long est nécessaire.");return;}
+    if(!confirm("Plus d'emplacement de niveau "+niv+".\nLancer « "+sp.nom+" » avec un emplacement de niveau "+use+" (sort renforcé) ?"))return;
+  }
+  c.slots[use].used=(Number(c.slots[use].used)||0)+1;
+  if(sp.conc){if(c.concentration&&c.concentration!==sp.nom)endConcentration(c,"remplacé par "+sp.nom);c.concentration=sp.nom;}
+  save(true); renderSheet(); if(typeof lockPlayerSheet==="function")lockPlayerSheet();
+  flashMsg("🔮 "+sp.nom+" lancé — emplacement niv."+use+" utilisé ("+(free(use))+" restant(s))");
+}
+
+// ===== Concentration (D&D 5e) =====
+// Jet de sauvegarde de CON quand un lanceur concentré subit des dégâts : DD = max(10, moitié des dégâts).
+function concSaveBonus(c){
+  const m=modInt((c.stats&&c.stats.con)||10);
+  const pb=profBonus(levelFromXP(c.xp));
+  return m+((c.saves&&c.saves.con)?pb:0);
+}
+function endConcentration(c,reason){
+  if(!c||!c.concentration)return;
+  const sp=c.concentration; c.concentration=""; save(true);
+  flashMsg("🧠 "+(c.nom||"Le lanceur")+" perd sa concentration sur « "+sp+" »"+(reason?" ("+reason+")":""));
+  if(typeof logDice==="function")logDice("🧠 "+esc(c.nom||""),`Concentration rompue : <b>${esc(sp)}</b>${reason?' — '+esc(reason):''}`);
+}
+// À appeler après qu'un PJ a perdu des PV (dmg = dégâts subis)
+function concAfterDamage(c,dmg){
+  if(!c||!c.concentration||!(dmg>0))return;
+  if((Number(c.pv)||0)<=0){endConcentration(c,"tombé à 0 PV");return;}
+  const dd=Math.max(10,Math.floor(dmg/2));
+  const bon=concSaveBonus(c);
+  const txt="🧠 "+(c.nom||"Le lanceur")+" se concentre sur « "+c.concentration+" » et subit "+dmg+" dégâts.\n"
+    +"Jet de sauvegarde de CON — DD "+dd+" (bonus "+(bon>=0?"+":"")+bon+").\n\n"
+    +"Saisissez le résultat TOTAL du jet du joueur,\nou laissez vide puis OK pour que l'outil lance le d20.";
+  const ans=prompt(txt,"");
+  if(ans===null){flashMsg("🧠 Jet de concentration ignoré — à gérer manuellement (DD "+dd+")");return;}
+  let total, detail;
+  if(String(ans).trim()===""){const d=_d(20);total=d+bon;detail="d20="+d+(bon>=0?"+":"")+bon;}
+  else{total=parseInt(ans);detail="jet du joueur";}
+  const ok=!isNaN(total)&&total>=dd;
+  if(typeof logDice==="function")logDice("🧠 "+esc(c.nom||""),`Concentration (<b>${esc(c.concentration)}</b>) — CON <b class="dice-big">${isNaN(total)?'?':total}</b> vs DD ${dd} <span class="tiny">(${detail})</span> → ${ok?'<b style="color:#2f7d32">maintenue</b>':'<b style="color:#8a2020">ROMPUE</b>'}`);
+  if(ok){flashMsg("🧠 Concentration maintenue ("+total+" ≥ DD "+dd+")");save(true);}
+  else endConcentration(c,"jet de CON raté ("+(isNaN(total)?'?':total)+" < DD "+dd+")");
+}
+// Lancer un nouveau sort de concentration : confirmer le remplacement de l'ancien
+function concReplace(c,newSp){
+  if(!c)return true;
+  if(c.concentration && c.concentration!==newSp){
+    if(!confirm("🧠 "+(c.nom||"Ce lanceur")+" se concentre déjà sur « "+c.concentration+" ».\nLancer « "+newSp+" » met fin à ce sort. Continuer ?"))return false;
+    endConcentration(c,"remplacé par "+newSp);
+  }
+  c.concentration=newSp; save(true); return true;
+}
 function renderPips(nv,tot,used){
   let h="";
-  for(let i=0;i<tot;i++){const on=i<used;h+=`<span class="pip${on?' used':''}" onclick="togglePip(${nv},${i})" title="${on?'Récupérer':'Utiliser'}"></span>`;}
+  for(let i=0;i<tot;i++){const on=i<used;h+=`<span class="pip lv${on?' used':''}" style="--pipc:${SPELL_LV_COL[nv]}" onclick="togglePip(${nv},${i})" title="${on?'Récupérer':'Utiliser'}"></span>`;}
   if(tot===0)h='<span class="tiny" style="opacity:.6">—</span>';
   return h;
 }
 function ensureSlot(nv){if(!data[current].slots[nv])data[current].slots[nv]={total:0,used:0};return data[current].slots[nv];}
-function slotTotal(nv,delta){const sl=ensureSlot(nv);sl.total=Math.max(0,sl.total+delta);if(sl.used>sl.total)sl.used=sl.total;save(true);renderSheet();}
+
+// ===== Emplacements de sorts FIXÉS par la classe + le niveau (D&D 5e) =====
+const SLOTS_FULL=[[],[2],[3],[4,2],[4,3],[4,3,2],[4,3,3],[4,3,3,1],[4,3,3,2],[4,3,3,3,1],[4,3,3,3,2],[4,3,3,3,2,1],[4,3,3,3,2,1],[4,3,3,3,2,1,1],[4,3,3,3,2,1,1],[4,3,3,3,2,1,1,1],[4,3,3,3,2,1,1,1],[4,3,3,3,2,1,1,1,1],[4,3,3,3,3,1,1,1,1],[4,3,3,3,3,2,1,1,1],[4,3,3,3,3,2,2,1,1]];
+const SLOTS_HALF=[[],[],[2],[3],[3],[4,2],[4,2],[4,3],[4,3],[4,3,2],[4,3,2],[4,3,3],[4,3,3],[4,3,3,1],[4,3,3,1],[4,3,3,2],[4,3,3,2],[4,3,3,3,1],[4,3,3,3,1],[4,3,3,3,2],[4,3,3,3,2]];
+const PACT=[[0,0],[1,1],[2,1],[2,2],[2,2],[2,3],[2,3],[2,4],[2,4],[2,5],[2,5],[3,5],[3,5],[3,5],[3,5],[3,5],[3,5],[4,5],[4,5],[4,5],[4,5]];
+function slotTableFor(c){
+  const k=(c.classe||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  const lv=Math.min(20,Math.max(1,levelFromXP(c.xp)));
+  if(/occultiste|sorcier|warlock/.test(k)){const p=PACT[lv];const t=[];t[p[1]-1]=p[0];return t;}
+  if(/barde|clerc|pretre|druide|ensorceleur|magicien|mage|wizard|cleric|druid|bard|sorcerer/.test(k))return SLOTS_FULL[lv];
+  if(/paladin|rodeur|ranger/.test(k))return SLOTS_HALF[lv];
+  return [];
+}
+function syncSlots(c){
+  if(!c)return; if(!c.slots)c.slots={};
+  const t=slotTableFor(c);
+  for(let nv=1;nv<=9;nv++){
+    const tot=Number(t[nv-1])||0;
+    if(!c.slots[nv])c.slots[nv]={total:0,used:0};
+    c.slots[nv].total=tot;
+    if((c.slots[nv].used||0)>tot)c.slots[nv].used=tot;
+  }
+}
+function slotTotal(nv,delta){ /* total fixé par classe + niveau */ }
 function togglePip(nv,i){const sl=ensureSlot(nv);
   // clic sur un pip : si i<used -> on libère jusqu'à i ; sinon on consomme jusqu'à i+1
   if(i<sl.used){sl.used=i;}else{sl.used=Math.min(sl.total,i+1);}
@@ -2324,7 +2433,7 @@ function setEquip(slot,val){
     const old=c.equip.mainS; c.equip.mainS="";
     flashMsg("⚔ « "+val+" » se tient à deux mains → « "+old+" » retiré de la main secondaire.");
   }
-  save(true);renderSheet();
+  save(true);renderSheet();lockPlayerSheet();
 }
 function toggleSave(k,v){data[current].saves[k]=v;save(true);renderSheet();}
 function toggleSkill(k,v){data[current].skills[k]=v;save(true);renderSheet();}
