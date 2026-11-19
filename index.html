@@ -114,6 +114,9 @@ input:focus,select:focus{outline:none;border-color:var(--gold2);box-shadow:0 0 0
 .combat .box input{text-align:center;font-size:20px;font-weight:bold;}
 .ca-auto{background:#eef3e8 !important;color:#2f4b2f;}
 .auto-eq{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.dstats{flex-wrap:wrap}
+.pill-att{color:#8a2f2f}
+.pill-att b{color:#8a2f2f}
 .tour-max{color:#8a2f2f;margin-top:2px}
 .tour-max span{opacity:.75}
 .dmg-auto{color:#8a2f2f;font-weight:700}
@@ -931,25 +934,6 @@ function renderSheet(){
     </div>
 
     <div class="panel">
-      <h3><span class="i">✦</span> Caractéristiques</h3>
-      <details class="ini-help"><summary>❓ Comment ça marche&nbsp;?</summary><ol><li>Vos 6 caractéristiques (FOR, DEX…) et leurs <b>modificateurs</b> (pastille colorée : vert = bonus, rouge = malus).</li><li>Elles sont fixées par le MJ. Elles servent de base aux jets de sauvegarde, compétences, attaques et à la CA.</li></ol></details>
-      <div class="stats">
-        ${STATS.map(([k,n])=>`
-          <div class="stat">
-            <div class="name">${n}</div>
-            <input type="number" value="${c.stats[k]}" oninput="updStat('${k}',this.value)">
-            <div class="mod ${signCls(mod(c.stats[k]))}" id="mod_${k}">${mod(c.stats[k])}</div>
-          </div>`).join("")}
-      </div>
-    </div>
-
-    <div class="panel">
-      <h3><span class="i">🧬</span> Traits raciaux <span class="tiny" style="margin-left:auto">${(findRace(c.race)||{}).label||c.race||''}</span></h3>
-      <details class="ini-help"><summary>❓ Comment ça marche&nbsp;?</summary><ol><li>Ces traits se remplissent selon la <b>race</b> (champ Identité) : vision nocturne, résistances, capacités.</li><li>Les capacités <b>actives</b> (ex. Souffle du drakéide) ont un bouton 🎲 qui lance leurs dégâts (échelonnés selon le niveau).</li></ol></details>
-      <div class="traits-box">${raceTraitsHTML(c)}</div>
-    </div>
-
-    <div class="panel">
       <h3><span class="i">🛡</span> Combat</h3>
       <details class="ini-help"><summary>❓ Comment ça marche&nbsp;?</summary><ol><li><b>Points de vie</b> : seuls modifiables par vous — bouton <b>−</b> (dégâts/piège) et <b>+</b> (potion, repas, repos, sort).</li><li><b>CA</b> (classe d'armure) calculée automatiquement selon l'<b>armure</b> + le <b>bouclier</b> + le <b>casque</b> équipés (et le mod. de DEX). L'<b>initiative</b> est définie automatiquement. La charge montre votre encombrement.</li></ol></details>
       <div class="combat">
@@ -999,6 +983,27 @@ function renderSheet(){
     </div>
 
     <div class="panel">
+      <h3><span class="i">✦</span> Caractéristiques</h3>
+      <details class="ini-help"><summary>❓ Comment ça marche&nbsp;?</summary><ol><li>Vos 6 caractéristiques (FOR, DEX…) et leurs <b>modificateurs</b> (pastille colorée : vert = bonus, rouge = malus).</li><li>Elles sont fixées par le MJ. Elles servent de base aux jets de sauvegarde, compétences, attaques et à la CA.</li></ol></details>
+      <div class="stats">
+        ${STATS.map(([k,n])=>`
+          <div class="stat">
+            <div class="name">${n}</div>
+            <input type="number" value="${c.stats[k]}" oninput="updStat('${k}',this.value)">
+            <div class="mod ${signCls(mod(c.stats[k]))}" id="mod_${k}">${mod(c.stats[k])}</div>
+          </div>`).join("")}
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3><span class="i">🧬</span> Traits raciaux <span class="tiny" style="margin-left:auto">${(findRace(c.race)||{}).label||c.race||''}</span></h3>
+      <details class="ini-help"><summary>❓ Comment ça marche&nbsp;?</summary><ol><li>Ces traits se remplissent selon la <b>race</b> (champ Identité) : vision nocturne, résistances, capacités.</li><li>Les capacités <b>actives</b> (ex. Souffle du drakéide) ont un bouton 🎲 qui lance leurs dégâts (échelonnés selon le niveau).</li></ol></details>
+      <div class="traits-box">${raceTraitsHTML(c)}</div>
+    </div>
+
+    
+
+    <div class="panel">
       <h3><span class="i">⭐</span> Expérience &amp; progression</h3>
       <details class="ini-help"><summary>❓ Comment ça marche&nbsp;?</summary><ol><li>Votre XP et la barre de progression vers le niveau suivant. L'XP est attribuée par le MJ (fin de quête/combat).</li><li>À chaque palier franchi, le <b>niveau</b> et le <b>bonus de maîtrise</b> montent automatiquement.</li></ol></details>
       <div class="xp-head">
@@ -1008,6 +1013,12 @@ function renderSheet(){
       <div class="xpbar"><div style="width:${pct}%"></div><div class="pct">${pct}%</div></div>
       <div class="next-info">${lv<20?("Palier suivant : "+nextThresh.toLocaleString('fr-FR')+" XP ("+(nextThresh-c.xp).toLocaleString('fr-FR')+" XP restants)"):"Niveau maximum atteint !"}</div>
       <div class="xp-locked tiny">🔒 L'XP est attribuée par le Maître du Jeu (scan du QR ou code de synchro) — vous ne pouvez pas la modifier vous-même.</div>
+    </div>
+
+    <div class="panel">
+      <h3><span class="i">🌳</span> Arbre de progression <span class="tiny" style="margin-left:auto">niv. 1 à 5 · ${(c.classe||'')}</span></h3>
+      <details class="ini-help"><summary>❓ Comment ça marche&nbsp;?</summary><ol><li>Aperçu des aptitudes/sorts débloqués par la classe aux niveaux 1 à 5.</li><li>Le niveau actuel (◀) est surligné ; en vert les niveaux acquis, en gris ceux à venir.</li></ol></details>
+      <div class="ptree-box">${progressionTreeHTML(c)}</div>
     </div>
 
     <div class="panel">
@@ -1039,11 +1050,7 @@ function renderSheet(){
       </div>
     </div>
 
-    <div class="panel">
-      <h3><span class="i">🌳</span> Arbre de progression <span class="tiny" style="margin-left:auto">niv. 1 à 5 · ${(c.classe||'')}</span></h3>
-      <details class="ini-help"><summary>❓ Comment ça marche&nbsp;?</summary><ol><li>Aperçu des aptitudes/sorts débloqués par la classe aux niveaux 1 à 5.</li><li>Le niveau actuel (◀) est surligné ; en vert les niveaux acquis, en gris ceux à venir.</li></ol></details>
-      <div class="ptree-box">${progressionTreeHTML(c)}</div>
-    </div>
+    
 
     <div class="panel" style="grid-column:1/-1">
       <h3><span class="i">⚔️</span> Attaques</h3>
@@ -1731,8 +1738,12 @@ function renderDashboard(){
       <div class="dsub">${esc(sub)}</div>
       <div class="dstats">
         <div class="pill">PV<b>${pv}/${pvmax}</b></div>
-        <div class="pill">CA<b>${c.ca}</b></div>
+        <div class="pill">CA<b>${(()=>{try{return computeCA(c).ca;}catch(e){return c.ca;}})()}</b></div>
         <div class="pill">Init<b>${signed(Number(c.init)||0)}</b></div>
+        ${(()=>{let d=null,t=null;try{d=maxDamage(c);t=d?turnMaxDamage(c,d):null;}catch(e){}
+          const v=d?(t?t.total:d.total):"—";
+          const tip=d?(esc(d.nom)+" "+d.dice+d.modTxt+(t?" + off-hand "+esc(c.equip.mainS)+" → "+t.off:"")):"aucune arme équipée";
+          return `<div class="pill pill-att" title="Attaque max par tour : ${tip}">⚔ Att.<b>${v}</b></div>`;})()}
       </div>
       <div class="dhp"><div style="width:${hpRatio*100}%;background:${hpColor(hpRatio)}"></div></div>
       <div class="dmini"><span>XP ${Number(c.xp).toLocaleString('fr-FR')}</span><span>${lv<20?xpPct+"%":"MAX"}</span></div>
