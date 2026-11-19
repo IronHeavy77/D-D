@@ -117,6 +117,16 @@ input:focus,select:focus{outline:none;border-color:var(--gold2);box-shadow:0 0 0
 .dstats{flex-wrap:wrap}
 .pill-att{color:#8a2f2f}
 .pill-att b{color:#8a2f2f}
+.cres-row{padding:4px 0;border-bottom:1px dashed var(--line)}
+.cres-lbl{font-weight:600;margin-right:8px}
+.cres-rech{float:right}
+.pip.cres{border-color:#8a6a2f}
+.pip.cres:not(.used){background:#b8904a}
+.best-auto{color:#6a3b8a !important}
+.pill-best{color:#6a3b8a}
+.pill-best b{color:#6a3b8a}
+.feat-link{cursor:pointer;border-bottom:1px dotted #8a6a2f}
+.feat-link:hover{color:#6a3b8a}
 .tour-max{color:#8a2f2f;margin-top:2px}
 .tour-max span{opacity:.75}
 .dmg-auto{color:#8a2f2f;font-weight:700}
@@ -539,7 +549,7 @@ function loadQuests(){try{const q=JSON.parse(localStorage.getItem(QKEY));if(Arra
 function saveQuests(flash){localStorage.setItem(QKEY,JSON.stringify(quests));if(flash){const f=document.getElementById("flash");f.classList.add("show");clearTimeout(window._ft);window._ft=setTimeout(()=>f.classList.remove("show"),900);}}
 
 function load(){
-  try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.length){d.forEach(c=>{if(!c.saves)c.saves={};if(!c.skills)c.skills={};if(!c.attaques||!c.attaques.length)c.attaques=[{nom:"",bonus:"",degats:""}];if(!c.slots)c.slots={};if(c.style===undefined)c.style="";/* harmonisation armes : objets « Deux X » -> 2 lignes (main P + main S) */(function(){const inv=c.inv||[];for(let k=0;k<inv.length;k++){const o=inv[k];const m=/^\s*deux\s+(.+?)s?\s*$/i.exec(o.obj||"");if(!m)continue;const base=m[1].replace(/\b(\w+?)s\b/g,"$1");const nm=base.charAt(0).toUpperCase()+base.slice(1);const w=(Number(o.poids)||0);const half=Math.round((w/2)*100)/100||w;inv.splice(k,1,{obj:nm,qte:1,poids:half},{obj:nm+" (seconde)",qte:1,poids:half});if(c.equip){if(c.equip.mainP===o.obj){c.equip.mainP=nm;if(!c.equip.mainS)c.equip.mainS=nm+" (seconde)";}if(c.equip.mainS===o.obj)c.equip.mainS=nm+" (seconde)";}k++;}})();if(/caavylteradyn/i.test(c.nom||"")&&!c.souffle){c.souffle="feu";c.ascendance="Rouge";} /* ascendance rouge auto */if(c.castStat===undefined)c.castStat="";if(c.sorts===undefined)c.sorts="";if(c.genre===undefined)c.genre="h";if(c.portrait===undefined)c.portrait="";if(c.portraitH===undefined)c.portraitH="";if(c.portraitF===undefined)c.portraitF="";
+  try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.length){d.forEach(c=>{if(!c.saves)c.saves={};if(!c.skills)c.skills={};if(!c.attaques||!c.attaques.length)c.attaques=[{nom:"",bonus:"",degats:""}];if(!c.slots)c.slots={};if(c.style===undefined)c.style="";if(!c.cres)c.cres={};/* harmonisation armes : objets « Deux X » -> 2 lignes (main P + main S) */(function(){const inv=c.inv||[];for(let k=0;k<inv.length;k++){const o=inv[k];const m=/^\s*deux\s+(.+?)s?\s*$/i.exec(o.obj||"");if(!m)continue;const base=m[1].replace(/\b(\w+?)s\b/g,"$1");const nm=base.charAt(0).toUpperCase()+base.slice(1);const w=(Number(o.poids)||0);const half=Math.round((w/2)*100)/100||w;inv.splice(k,1,{obj:nm,qte:1,poids:half},{obj:nm+" (seconde)",qte:1,poids:half});if(c.equip){if(c.equip.mainP===o.obj){c.equip.mainP=nm;if(!c.equip.mainS)c.equip.mainS=nm+" (seconde)";}if(c.equip.mainS===o.obj)c.equip.mainS=nm+" (seconde)";}k++;}})();if(/caavylteradyn/i.test(c.nom||"")&&!c.souffle){c.souffle="feu";c.ascendance="Rouge";} /* ascendance rouge auto */if(c.castStat===undefined)c.castStat="";if(c.sorts===undefined)c.sorts="";if(c.genre===undefined)c.genre="h";if(c.portrait===undefined)c.portrait="";if(c.portraitH===undefined)c.portraitH="";if(c.portraitF===undefined)c.portraitF="";
       // Réparation : réinjecter les portraits H/F depuis la table de secours si manquants
       if((!c.portraitH||!c.portraitF) && typeof PORTRAIT_FALLBACK!=="undefined" && PORTRAIT_FALLBACK[c.nom]){
         if(!c.portraitH)c.portraitH=PORTRAIT_FALLBACK[c.nom].h||"";
@@ -649,7 +659,10 @@ function computeCA(c){
   const dex=modInt(c.stats.dex);
   const armObj=c.equip&&c.equip.torse?matchTable(ARMOR_TABLE,c.equip.torse):null;
   let ca, note;
-  if(!armObj){ ca=10+dex; note="sans armure (10 + DEX)"; }
+  if(!armObj){ const _k=_cn(c), _sh=c.equip&&c.equip.mainS&&shieldBonus(c.equip.mainS)>0;
+      if(/moine/.test(_k)&&!_sh){ const sg=modInt(c.stats.sag); ca=10+dex+sg; note="défense sans armure du moine (10 + DEX + SAG)"; }
+      else if(/barbare/.test(_k)){ const co=modInt(c.stats.con); ca=10+dex+co; note="défense sans armure du barbare (10 + DEX + CON)"; }
+      else { ca=10+dex; note="sans armure (10 + DEX)"; } }
   else if(armObj.type==="légère"){ ca=armObj.ca+dex; note=c.equip.torse+" (légère)"; }
   else if(armObj.type==="intermédiaire"){ ca=armObj.ca+Math.min(dex,(armObj.maxdex!==undefined?armObj.maxdex:2)); note=c.equip.torse+" (interm., DEX max +"+(armObj.maxdex!==undefined?armObj.maxdex:2)+")"; }
   else { ca=armObj.ca; note=c.equip.torse+" (lourde)"; }
@@ -820,23 +833,23 @@ function canPickStyle(c){
 }
 function styleObj(k){ return FIGHTING_STYLES.find(s=>s.k===k)||null; }
 const CLASS_GAINS={
- "paladin":{2:"Imposition des mains ; sorts de paladin ; style de combat",3:"Serment sacré (archétype) + sorts de serment ; Sévérité sacrée",4:"Amélioration de caractéristique (ASI)",5:"Attaque supplémentaire ; emplacements de sorts niv.2",6:"Aura de protection"},
+ "paladin":{2:"Châtiment divin ; style de combat ; sorts de paladin",3:"Serment sacré (archétype) + sorts de serment ; Sévérité sacrée",4:"Amélioration de caractéristique (ASI)",5:"Attaque supplémentaire ; emplacements de sorts niv.2",6:"Aura de protection"},
  "moine":{2:"Ki (points de ki) ; Déplacement sans armure ; Rafale de coups, Défense patiente, Pas de vent",3:"Tradition monastique (archétype) ; Déviation de projectiles",4:"ASI ; Chute ralentie",5:"Attaque supplémentaire ; Frappe étourdissante",6:"Coups renforcés par le ki ; aptitude de tradition"},
  "druide":{2:"Forme sauvage ; Cercle druidique (archétype)",3:"Emplacements de sorts niv.2",4:"ASI ; Forme sauvage améliorée",5:"Emplacements de sorts niv.3",6:"Aptitude de cercle (ex. Terre : récupération naturelle)"},
  "rôdeur":{2:"Style de combat ; sorts de rôdeur",3:"Archétype de rôdeur ; Conscience primitive",4:"ASI",5:"Attaque supplémentaire ; emplacements niv.2",6:"Ennemi juré & Exploration accrue améliorés"},
  "rodeur":{2:"Style de combat ; sorts de rôdeur",3:"Archétype de rôdeur ; Conscience primitive",4:"ASI",5:"Attaque supplémentaire ; emplacements niv.2",6:"Ennemi juré & Exploration accrue améliorés"},
- "roublard":{2:"Ruse (action bonus)",3:"Archétype de roublard ; dés d'attaque sournoise 2d6",4:"ASI",5:"Esquive instinctive",6:"Expertise (2 compétences de plus)"},
- "guerrier":{2:"Second souffle ; Fougue (Action Surge)",3:"Archétype martial",4:"ASI",5:"Attaque supplémentaire",6:"ASI"},
+ "roublard":{2:"Ruse (action bonus)",3:"Archétype de roublard ; dés d'attaque sournoise 2d6",4:"ASI",5:"Esquive instinctive ; attaque sournoise 3d6",6:"Expertise (2 compétences de plus)"},
+ "guerrier":{2:"Fougue (Action Surge)",3:"Archétype martial",4:"ASI",5:"Attaque supplémentaire",6:"ASI"},
  "barbare":{2:"Attaque téméraire ; Perception du danger",3:"Voie primitive (archétype)",4:"ASI",5:"Attaque supplémentaire ; Déplacement rapide",6:"Aptitude de voie primitive"},
  "barde":{2:"Chant de repos ; Touche-à-tout",3:"Collège bardique ; Expertise",4:"ASI",5:"Inspiration bardique (d8) ; Source d'inspiration",6:"Contre-charme ; aptitude de collège"},
  "clerc":{2:"Canalisation d'énergie divine (1/repos)",3:"Emplacements de sorts niv.2",4:"ASI",5:"Destruction des morts-vivants",6:"Canalisation (2/repos) ; aptitude de domaine"},
  "prêtre":{2:"Canalisation d'énergie divine (1/repos)",3:"Emplacements niv.2",4:"ASI",5:"Destruction des morts-vivants",6:"Canalisation (2/repos)"},
  "pretre":{2:"Canalisation d'énergie divine (1/repos)",3:"Emplacements niv.2",4:"ASI",5:"Destruction des morts-vivants",6:"Canalisation (2/repos)"},
- "magicien":{2:"Tradition arcanique (école) ; Récupération arcanique",3:"Emplacements niv.2",4:"ASI",5:"Emplacements niv.3",6:"Aptitude d'école"},
+ "magicien":{2:"Tradition arcanique (école)",3:"Emplacements niv.2",4:"ASI",5:"Emplacements niv.3",6:"Aptitude d'école"},
  "ensorceleur":{2:"Source de magie ; points de sorcellerie",3:"Métamagie ; emplacements niv.2",4:"ASI",5:"Emplacements niv.3",6:"Aptitude d'origine"},
  "occultiste":{2:"Manifestations occultes",3:"Pacte (lame/grimoire/chaîne)",4:"ASI",5:"Emplacements de mystères niv.3",6:"Aptitude de protecteur"}
 };
-const CLASS_GAINS_L1={"paladin": "Sens divin ; Imposition des mains", "moine": "Arts martiaux ; défense sans armure", "druide": "Incantation (druidique) ; connaissance druidique", "rôdeur": "Ennemi juré ; Explorateur-né", "rodeur": "Ennemi juré ; Explorateur-né", "roublard": "Expertise ; Attaque sournoise 1d6 ; argot des voleurs", "guerrier": "Style de combat ; Second souffle", "barbare": "Rage ; Défense sans armure", "barde": "Incantation ; Inspiration bardique (d6)", "clerc": "Incantation ; Domaine divin", "prêtre": "Incantation ; Domaine divin", "pretre": "Incantation ; Domaine divin", "magicien": "Incantation ; Récupération arcanique (bientôt)", "ensorceleur": "Incantation ; Origine magique", "occultiste": "Magie de pacte ; Protecteur"};
+const CLASS_GAINS_L1={"paladin": "Sens divin ; Imposition des mains", "moine": "Arts martiaux ; défense sans armure", "druide": "Incantation (druidique) ; connaissance druidique", "rôdeur": "Ennemi juré ; Explorateur-né", "rodeur": "Ennemi juré ; Explorateur-né", "roublard": "Expertise ; Attaque sournoise 1d6 ; argot des voleurs", "guerrier": "Style de combat ; Second souffle", "barbare": "Rage ; Défense sans armure", "barde": "Incantation ; Inspiration bardique (d6)", "clerc": "Incantation ; Domaine divin", "prêtre": "Incantation ; Domaine divin", "pretre": "Incantation ; Domaine divin", "magicien": "Incantation ; Récupération arcanique (bientôt) ; Restauration arcanique", "ensorceleur": "Incantation ; Origine magique", "occultiste": "Magie de pacte ; Protecteur"};
 function classGain(classe, lvl){
   if(lvl===1){const o=(classe||'').toLowerCase();for(const k in CLASS_GAINS_L1){if(o.includes(k))return CLASS_GAINS_L1[k];}return '';}
   const o=(classe||"").toLowerCase();
@@ -845,6 +858,27 @@ function classGain(classe, lvl){
 }
 
 // ===== Arbre de progression (niveaux 1 à 5) =====
+const CLASS_GLOSS={"Sens divin": "Action : jusqu'au début de votre prochain tour, vous savez où se trouvent les célestes, fiélons et morts-vivants à 18 m (hors abri total), ainsi que les lieux consacrés ou profanés. Utilisations : 1 + mod. CHA par repos long.", "Imposition des mains": "Réserve de soins = 5 × niveau de paladin (15 PV au niv. 3), rechargée au repos long. Action : touchez une créature et rendez-lui des PV pris dans la réserve. 5 PV de la réserve guérissent aussi une maladie ou neutralisent un poison. Sans effet sur morts-vivants et artificiels.", "Châtiment divin": "Niv. 2. Quand vous touchez avec une attaque d'arme de mêlée, vous pouvez dépenser un emplacement de sort : +2d8 dégâts radiants pour un emplacement niv. 1, +1d8 par niveau d'emplacement supplémentaire (max 5d8), +1d8 contre un mort-vivant ou un fiélon. Se décide après avoir vu que l'attaque touche (même sur un critique : les dés sont doublés).", "Style de combat": "Niv. 1 (guerrier) ou niv. 2 (paladin, rôdeur) : spécialisation choisie une fois. Défense (+1 CA en armure), Duelliste (+2 dégâts à une arme à une main seule), Combat à deux armes (mod. sur l'off-hand), Combat à deux mains (relance des 1-2), Tir à distance (+2 au toucher), Protection (désavantage sur une attaque contre un allié proche, avec un bouclier). Choisissez-le dans ⚔️ Attaques.", "Sorts de paladin": "Niv. 2 : incantation de demi-lanceur, caractéristique CHA. Sorts préparés = mod. CHA + moitié du niveau (min. 1), choisis chaque jour parmi la liste du paladin. Exemples niv. 1 : Bénédiction, Bouclier de la foi, Soins, Héroïsme, Châtiment courroucé, Faveur divine, Protection contre le mal et le bien.", "Serment sacré": "Niv. 3 : choix du serment (Dévotion, Anciens, Vengeance…). Il donne des sorts de serment toujours préparés et des options de Conduit divin. Ex. Dévotion : Arme sacrée (+CHA au toucher pendant 1 min) ou Renvoi des impies.", "Sévérité sacrée": "Variante maison du niv. 3 : rappel de l'immunité aux maladies du paladin (Santé divine). Le paladin est immunisé contre les maladies.", "Santé divine": "Niv. 3 : la magie divine qui vous traverse vous immunise contre les maladies.", "Conduit divin": "Niv. 3 (paladin) / 2 (clerc) : 1 utilisation par repos court. Effet selon le serment ou le domaine (ex. Arme sacrée, Renvoi des morts-vivants).", "Aura de protection": "Niv. 6 : vous et vos alliés à 3 m ajoutez votre mod. CHA (min. +1) à tous vos jets de sauvegarde, tant que vous êtes conscient.", "Attaque supplémentaire": "Niv. 5 (guerrier, paladin, rôdeur, moine, barbare) : vous attaquez deux fois au lieu d'une quand vous prenez l'action Attaquer.", "Arts martiaux": "Niv. 1, sans armure ni bouclier, avec une arme de moine ou à mains nues : DEX au lieu de FOR possible, frappe à mains nues 1d4 (1d6 niv. 5), et après une attaque, une frappe à mains nues gratuite en action bonus.", "Défense sans armure": "Moine : CA = 10 + DEX + SAG sans armure ni bouclier. Barbare : CA = 10 + DEX + CON, bouclier autorisé. Calculée automatiquement dans la fiche.", "Ki": "Niv. 2 : points de ki = niveau du moine, rechargés au repos court (1 min de méditation). Rafale de coups, Défense patiente et Pas du vent coûtent 1 ki chacun. DD des effets de ki = 8 + maîtrise + SAG.", "Rafale de coups": "1 ki, juste après l'action Attaquer : deux frappes à mains nues en action bonus (au lieu d'une).", "Défense patiente": "1 ki : action Esquiver en action bonus (les attaques contre vous ont le désavantage).", "Pas de vent": "1 ki : action Se désengager ou Foncer en action bonus, et votre distance de saut est doublée ce tour.", "Déplacement sans armure": "Niv. 2 : +3 m de vitesse sans armure ni bouclier (augmente avec le niveau).", "Déviation de projectiles": "Niv. 3, réaction : réduit les dégâts d'une attaque à distance de 1d10 + DEX + niveau. Si réduits à 0, vous pouvez renvoyer le projectile (1 ki).", "Tradition monastique": "Niv. 3 : choix de la voie (Main ouverte, Ombre, Quatre éléments…).", "Frappe étourdissante": "Niv. 5, 1 ki après avoir touché en mêlée : la cible réussit un jet de CON ou est étourdie jusqu'à la fin de votre prochain tour.", "Chute ralentie": "Niv. 4, réaction : réduit les dégâts de chute de 5 × niveau.", "Forme sauvage": "Niv. 2, 2 utilisations par repos court : action pour prendre la forme d'une bête déjà vue (niv. 2 : FP 1/4 max, pas de vol ni de nage). Durée : moitié du niveau en heures. Vous prenez les PV de la bête ; revenir à 0 PV vous ramène à votre forme avec vos PV.", "Cercle druidique": "Niv. 2 : choix du cercle (Terre : sorts bonus + Récupération naturelle ; Lune : formes plus puissantes).", "Incantation": "Lanceur de sorts : caractéristique d'incantation selon la classe (SAG druide/clerc, INT magicien, CHA barde/ensorceleur/paladin). DD = 8 + maîtrise + mod. ; bonus d'attaque = maîtrise + mod.", "Connaissance druidique": "Vous parlez le druidique, langue secrète des druides.", "Ennemi juré": "Niv. 1 : un type de créature choisi (ex. morts-vivants, orcs). Avantage aux tests de Sagesse (Survie) pour le pister et d'Intelligence pour vous souvenir d'infos sur lui ; vous apprenez une langue qu'il parle.", "Explorateur-né": "Niv. 1 : un terrain de prédilection (forêt, montagne…). Dans ce terrain : terrain difficile sans ralentir le groupe, impossible de se perdre, vigilance en voyage, double nourriture trouvée, pistage précis.", "Sorts de rôdeur": "Niv. 2 : demi-lanceur, caractéristique SAG, sorts connus. Ex. niv. 1 : Marque du chasseur (+1d6 dégâts à la cible marquée, concentration), Soins, Grêle d'épines, Communication avec les animaux.", "Archétype de rôdeur": "Niv. 3 : Chasseur (ex. Tueur de colosses : +1d8 une fois par tour contre une cible blessée) ou Maître des bêtes (compagnon animal).", "Conscience primitive": "Niv. 3 : dépense un emplacement pour sentir la présence de certains types de créatures dans un rayon de 1,5 km (9 km en terrain de prédilection).", "Expertise": "Maîtrise doublée dans 2 compétences (ou outils de voleur) au choix ; 2 de plus au niv. 6.", "Attaque sournoise": "1 fois par tour : +1d6 (niv. 1-2), 2d6 (niv. 3-4), 3d6 (niv. 5-6)… si vous avez l'avantage, OU si un allié non neutralisé est au contact de la cible et que vous n'avez pas le désavantage. Arme de finesse ou à distance obligatoire.", "Argot des voleurs": "Langage secret des voleurs, avec signes et symboles cachés.", "Ruse": "Niv. 2 : en action bonus, Foncer, Se désengager ou Se cacher.", "Archétype de roublard": "Niv. 3 : Voleur (mains lestes), Assassin (avantage + critique sur les surpris), Escroc arcanique (sorts).", "Esquive instinctive": "Niv. 5, réaction : divise par deux les dégâts d'une attaque d'un assaillant que vous voyez.", "Second souffle": "Niv. 1, 1 fois par repos court, action bonus : récupère 1d10 + niveau de guerrier PV.", "Fougue": "Niv. 2, 1 fois par repos court : une action supplémentaire pendant votre tour.", "Archétype martial": "Niv. 3 : Champion (critique sur 19-20), Maître de guerre (manœuvres), Chevalier occulte (sorts).", "Rage": "Barbare, action bonus : +2 dégâts en mêlée (FOR), avantage aux tests et sauvegardes de FOR, résistance aux dégâts contondants, perforants et tranchants. Dure 1 min. Pas d'incantation pendant la rage.", "Inspiration bardique": "Action bonus : un allié reçoit un dé (d6, puis d8 niv. 5) à ajouter à un jet. Utilisations = mod. CHA.", "Canalisation d'énergie divine": "Clerc : Renvoi des morts-vivants ou effet du domaine, 1 fois par repos court (2 au niv. 6).", "Domaine divin": "Clerc niv. 1 : le domaine choisi donne des sorts et des aptitudes (Vie, Lumière, Guerre…).", "Restauration arcanique": "Magicien, 1 fois par jour au repos court : récupère des emplacements dont la somme des niveaux ≤ moitié du niveau de magicien.", "ASI": "Amélioration de caractéristique : +2 à une caractéristique ou +1 à deux (max 20), ou un don si votre table les utilise.", "Amélioration de caractéristique": "+2 à une caractéristique ou +1 à deux (max 20), ou un don si votre table les utilise.", "Emplacements de sorts": "Le nombre d'emplacements augmente avec le niveau (table de la classe) ; ils se règlent automatiquement dans 🔮 Sorts et se rechargent au repos long.", "Emplacements": "Le nombre d'emplacements augmente avec le niveau (table de la classe) ; ils se règlent automatiquement dans 🔮 Sorts et se rechargent au repos long.", "Aptitude de tradition": "Aptitude donnée par la Tradition monastique choisie au niv. 3 (ex. Main ouverte : Plénitude du corps, soins = 3 × niveau, 1 fois par repos long).", "Aptitude de cercle": "Aptitude donnée par le Cercle druidique choisi au niv. 2 (ex. Terre : Récupération naturelle ; Lune : Forme sauvage de combat).", "Récupération naturelle": "Druide du Cercle de la Terre, 1 fois par jour au repos court : récupère des emplacements dont la somme des niveaux ≤ moitié du niveau de druide."};
+function _gk(x){return (x||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z ]/g," ").replace(/\s+/g," ").trim();}
+function glossFind(t){const n=_gk(t);let best=null,bl=0;for(const k in CLASS_GLOSS){const kn=_gk(k);if(n.includes(kn)&&kn.length>bl){best=k;bl=kn.length;}}return best;}
+function showFeat(name){
+  const c=data[current];let k=glossFind(name);
+  let ov=document.getElementById("spell_modal");
+  if(!ov){ov=document.createElement("div");ov.id="spell_modal";ov.onclick=(e)=>{if(e.target===ov)ov.style.display="none";};document.body.appendChild(ov);}
+  let body=k?esc(CLASS_GLOSS[k]):"Description non répertoriée — voir le Manuel des joueurs.";
+  if(k==="Style de combat"&&c){const s=c.style?styleObj(c.style):null;body=(s?`<b>Style choisi par ${esc(c.nom||'')} : ${esc(s.nom)}</b> — ${esc(s.desc)}<br><br>`:`<b>${esc(c.nom||'Ce héros')} n'a pas encore choisi de style</b> (sélecteur dans ⚔️ Attaques).<br><br>`)+body;}
+  ov.innerHTML=`<div class="spell-card"><div class="spell-h">🏅 ${esc(k||name)}</div><div style="line-height:1.55">${body}</div><button class="mini" style="margin-top:10px" onclick="document.getElementById('spell_modal').style.display='none'">Fermer</button></div>`;
+  ov.style.display="flex";
+}
+// Transforme un texte « A ; B ; C » en puces cliquables
+function featLinks(txt,c){
+  return (txt||"").split(/\s*;\s*/).filter(Boolean).map(part=>{
+    let lbl=part;
+    if(c&&/style de combat/i.test(part)){const s=c.style?styleObj(c.style):null;lbl=part+(s?" : "+s.nom:" (à choisir)");}
+    const k=glossFind(part);
+    return k?`<span class="feat-link" onclick="event.stopPropagation();showFeat('${esc(part).replace(/'/g,"")}')" title="Voir l'effet">${esc(lbl)} ℹ️</span>`:esc(lbl);
+  }).join(" ; ");
+}
 function progressionTreeHTML(c){
   const cur=levelFromXP(c.xp);
   let h='<div class="ptree">';
@@ -856,7 +890,7 @@ function progressionTreeHTML(c){
     if(g)items.push(g);
     if(asi && !(g||"").toLowerCase().includes("asi") && !(g||"").toLowerCase().includes("amélioration"))items.push("Amélioration de caractéristique (ASI)");
     const label = items.length?items.join(" ; "):"(pas de gain majeur)";
-    h+=`<div class="pt-row ${state}"><div class="pt-lv">Niv ${lv}${lv===cur?' ◀':''}</div><div class="pt-txt">${esc(label)}</div></div>`;
+    h+=`<div class="pt-row ${state}"><div class="pt-lv">Niv ${lv}${lv===cur?' ◀':''}</div><div class="pt-txt">${featLinks(label,c)}</div></div>`;
   }
   h+='</div><div class="tiny" style="margin-top:4px">◀ niveau actuel · vert = acquis · gris = à venir. Sorts/emplacements évoluent avec le niveau.</div>';
   return h;
@@ -963,6 +997,12 @@ function renderSheet(){
             else setup=`${main} → 1 coup`;
             return `<input type="text" value="${val}" disabled class="ca-auto dmg-auto" title="Dégâts max sur un tour"><div class="ca-note tiny">${setup}</div>`;})()}
           </div>
+        <div class="box"><label>Meilleure attaque</label>
+          ${(()=>{const d=maxDamage(c);if(!d)return `<input type="text" value="—" disabled class="ca-auto"><div class="ca-note tiny">aucune arme équipée</div>`;
+            const t=turnMaxDamage(c,d);const base=t?t.total:d.total;const co=classOffense(c,matchTable(WEAPON_TABLE,c.equip.mainP||""));
+            if(!co.dmg)return `<input type="text" value="${base}" disabled class="ca-auto dmg-auto best-auto"><div class="ca-note tiny">= dégâts max (aucune aptitude de classe offensive)</div>`;
+            return `<input type="text" value="${base+co.dmg}" disabled class="ca-auto dmg-auto best-auto" title="Dégâts max + aptitudes de classe, si leurs conditions sont réunies"><div class="ca-note tiny">Dégâts max ${base}<br>${co.lines.map(esc).join("<br>")}</div>`;})()}
+          </div>
         <div class="box"><label>Initiative</label><input type="number" class="${signCls(c.init)}" value="${c.init}" oninput="upd('init',this.value)">
           ${(()=>{const stt=encStateFrom(travelWeight(c),c);const base=Number(c.init)||0;
              if(stt==="warn"){const e=base-2;return `<div class="init-surp val-neg" title="Surpris sac au dos">surpris : ${e>=0?'+':''}${e}</div>`;}
@@ -999,6 +1039,12 @@ function renderSheet(){
       <h3><span class="i">🧬</span> Traits raciaux <span class="tiny" style="margin-left:auto">${(findRace(c.race)||{}).label||c.race||''}</span></h3>
       <details class="ini-help"><summary>❓ Comment ça marche&nbsp;?</summary><ol><li>Ces traits se remplissent selon la <b>race</b> (champ Identité) : vision nocturne, résistances, capacités.</li><li>Les capacités <b>actives</b> (ex. Souffle du drakéide) ont un bouton 🎲 qui lance leurs dégâts (échelonnés selon le niveau).</li></ol></details>
       <div class="traits-box">${raceTraitsHTML(c)}</div>
+    </div>
+
+    <div class="panel">
+      <h3><span class="i">🏅</span> Aptitudes de classe <span class="tiny" style="margin-left:auto">${esc(c.classe||'')} niv. ${levelFromXP(c.xp)}</span></h3>
+      <details class="ini-help"><summary>❓ Comment ça marche&nbsp;?</summary><ol><li>Aptitudes chiffrées de la classe au niveau actuel (attaque sournoise, arts martiaux, châtiment divin…). Celles qui augmentent les dégâts sont comptées dans <b>Dégâts max</b>.</li><li>Les aptitudes à <b>usages limités</b> ont des pastilles : cliquez pour en dépenser une. Elles se rechargent au <b>repos court</b> ou <b>long</b> selon l'aptitude (indiqué à droite).</li></ol></details>
+      <div class="traits-box">${classFeaturesHTML(c)}</div>
     </div>
 
     
@@ -1741,9 +1787,9 @@ function renderDashboard(){
         <div class="pill">CA<b>${(()=>{try{return computeCA(c).ca;}catch(e){return c.ca;}})()}</b></div>
         <div class="pill">Init<b>${signed(Number(c.init)||0)}</b></div>
         ${(()=>{let d=null,t=null;try{d=maxDamage(c);t=d?turnMaxDamage(c,d):null;}catch(e){}
-          const v=d?(t?t.total:d.total):"—";
+          const _co=d?classOffense(c,matchTable(WEAPON_TABLE,c.equip.mainP||"")):{dmg:0,lines:[]};const v=d?(t?t.total:d.total):"—";const _best=d&&_co.dmg?((t?t.total:d.total)+_co.dmg):null;
           const tip=d?(esc(d.nom)+" "+d.dice+d.modTxt+(t?" + off-hand "+esc(c.equip.mainS)+" → "+t.off:"")):"aucune arme équipée";
-          return `<div class="pill pill-att" title="Attaque max par tour : ${tip}">⚔ Att.<b>${v}</b></div>`;})()}
+          return `<div class="pill pill-att" title="Attaque max par tour (équipement) : ${tip}">⚔ Att.<b>${v}</b></div>${_best?`<div class="pill pill-best" title="Meilleure attaque avec aptitudes de classe : ${esc(_co.lines.join(' '))}">★ Best<b>${_best}</b></div>`:''}`;})()}
       </div>
       <div class="dhp"><div style="width:${hpRatio*100}%;background:${hpColor(hpRatio)}"></div></div>
       <div class="dmini"><span>XP ${Number(c.xp).toLocaleString('fr-FR')}</span><span>${lv<20?xpPct+"%":"MAX"}</span></div>
@@ -1845,7 +1891,7 @@ function lockPlayerSheet(){
   sh.querySelectorAll("button").forEach(b=>{
     const kept=/−|\+|PV|Repos|Partager|Recevoir|Scanner|Copier|📷|📤|📥|♂|♀|QR/i.test(b.textContent||"");
     const onclick=(b.getAttribute("onclick")||"");
-    const keptFn=/autoEquip|castFromSheet|showSpell|endConcentration|partyHp|shortRest|longRest|showShareFor|dmImportPrompt|scanToImport|setGenre|renderQrInline|navigator\.clipboard|toggle/i.test(onclick);
+    const keptFn=/showFeat|toggleResPip|layOnHands|secondWind|autoEquip|castFromSheet|showSpell|endConcentration|partyHp|shortRest|longRest|showShareFor|dmImportPrompt|scanToImport|setGenre|renderQrInline|navigator\.clipboard|toggle/i.test(onclick);
     if(!kept && !keptFn){ b.style.display="none"; }
   });
 }
@@ -2043,6 +2089,71 @@ function autoEquip(mode){
   flashMsg((mode==="def"?"🛡 Max défense":"⚔ Max attaque")+" : CA "+best.ca+" · dégâts max "+best.dmg
     +" — "+[best.e.mainP||"mains nues",best.e.mainS,best.e.torse,best.e.tete].filter(Boolean).join(", "));
 }
+
+// ===== Aptitudes de classe (D&D 5e) : défense sans armure, offensives, ressources à usages limités =====
+function _cn(c){return (c&&c.classe||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
+function martialDie(lv){return lv>=17?10:lv>=11?8:lv>=5?6:4;}
+function attacksPerAction(c){const k=_cn(c),lv=levelFromXP(c.xp);if(/guerrier|fighter/.test(k))return lv>=20?4:lv>=11?3:lv>=5?2:1;if(/paladin|rodeur|ranger|moine|barbare/.test(k)&&lv>=5)return 2;return 1;}
+// Ressources de classe à usages limités : [clé, libellé, total, recharge, aide]
+function classResources(c){
+  const k=_cn(c), lv=levelFromXP(c.xp), out=[];
+  const cha=Math.max(1,modInt((c.stats||{}).cha||10));
+  if(/moine/.test(k)&&lv>=2)out.push(["ki","🌀 Points de ki",lv,"court","Rafale de coups, Défense patiente, Pas du vent : 1 ki chacun"]);
+  if(/paladin/.test(k)){out.push(["loh","🤲 Imposition des mains (PV)",5*lv,"long","Réserve de PV de soin ; 5 PV soignent aussi une maladie"]);
+    out.push(["sens","👁 Sens divin",1+cha,"long","Détecte célestes, fiélons, morts-vivants à 18 m"]);
+    if(lv>=3)out.push(["cdiv","✨ Conduit divin",1,"court","Option du serment (ex. Arme sacrée)"]);}
+  if(/druide/.test(k)&&lv>=2)out.push(["wild","🐺 Forme sauvage",2,"court","Se transforme en bête (FP max selon le niveau)"]);
+  if(/guerrier|fighter/.test(k)){out.push(["sw","❤ Second souffle",1,"court","Action bonus : 1d10 + niveau PV"]);if(lv>=2)out.push(["surge","⚡ Fougue",lv>=17?2:1,"court","Une action supplémentaire ce tour"]);}
+  if(/barbare/.test(k))out.push(["rage","😤 Rage",lv>=20?99:lv>=17?6:lv>=12?5:lv>=6?4:lv>=3?3:2,"long","+"+(lv>=16?4:lv>=9?3:2)+" dégâts en mêlée (FOR), résistance contondant/perforant/tranchant"]);
+  if(/barde/.test(k))out.push(["insp","🎵 Inspiration bardique",cha,lv>=5?"court":"long","Dé d"+(lv>=15?12:lv>=10?10:lv>=5?8:6)+" offert à un allié"]);
+  if(/clerc|pretre/.test(k)&&lv>=2)out.push(["cdiv","✨ Conduit divin",lv>=18?3:lv>=6?2:1,"court","Renvoi des morts-vivants ou option du domaine"]);
+  if(/ensorceleur/.test(k)&&lv>=2)out.push(["sorc","🔥 Points de sorcellerie",lv,"long","Métamagie / création d'emplacements"]);
+  if(/magicien/.test(k))out.push(["arec","📘 Restauration arcanique",1,"long","Au repos court : récupère des emplacements (total ≤ moitié du niveau)"]);
+  if(/rodeur|ranger/.test(k)&&lv>=2)out.push(["hm","🎯 Marque du chasseur (sort niv.1)",0,"","Sort : +1d6 dégâts à la cible marquée (concentration) — utilise un emplacement"]);
+  return out;
+}
+function cresUsed(c,key){return ((c.cres||{})[key])||0;}
+function cresFree(c,key){const r=classResources(c).find(x=>x[0]===key);return r?Math.max(0,r[2]-cresUsed(c,key)):0;}
+function spendRes(c,key,n){if(!c.cres)c.cres={};const r=classResources(c).find(x=>x[0]===key);if(!r)return false;const u=cresUsed(c,key);if(u+n>r[2])return false;c.cres[key]=u+n;save(true);return true;}
+function toggleResPip(key,i){const c=data[current];if(!c.cres)c.cres={};const u=cresUsed(c,key);c.cres[key]=(i<u)?i:i+1;const r=classResources(c).find(x=>x[0]===key);if(r)c.cres[key]=Math.min(r[2],c.cres[key]);save(true);renderSheet();if(typeof lockPlayerSheet==="function")lockPlayerSheet();}
+function resetRes(c,kind){if(!c.cres)return;classResources(c).forEach(r=>{if(kind==="long"||r[3]==="court")c.cres[r[0]]=0;});}
+function layOnHands(){const c=data[current];const free=cresFree(c,"loh");if(!free){alert("🤲 Réserve d'imposition des mains vide (récupérée au repos long).");return;}
+  const n=prompt("🤲 Imposition des mains — combien de PV soigner ? (réserve : "+free+")\n(Le soin s'applique à "+(c.nom||"ce héros")+" ; pour un allié, ajustez ses PV sur sa fiche)",String(Math.min(free,Math.max(1,(Number(c.pvmax)||0)-(Number(c.pv)||0)))));if(n===null)return;
+  const v=Math.max(0,Math.min(free,parseInt(n)||0));if(!v)return;spendRes(c,"loh",v);c.pv=Math.min(Number(c.pvmax)||0,(Number(c.pv)||0)+v);save(true);renderSheet();renderDashboard();if(typeof lockPlayerSheet==="function")lockPlayerSheet();flashMsg("🤲 +"+v+" PV — réserve : "+cresFree(c,"loh"));}
+function secondWind(){const c=data[current];if(!spendRes(c,"sw",1)){alert("❤ Second souffle déjà utilisé (récupéré au repos court).");return;}const r=_d(10),h=r+levelFromXP(c.xp);c.pv=Math.min(Number(c.pvmax)||0,(Number(c.pv)||0)+h);save(true);renderSheet();renderDashboard();if(typeof lockPlayerSheet==="function")lockPlayerSheet();flashMsg("❤ Second souffle : +"+h+" PV (1d10="+r+" + niv.)");}
+// Panneau « Aptitudes de classe » : compteurs cliquables + rappels
+function classFeaturesHTML(c){
+  const k=_cn(c),lv=levelFromXP(c.xp),res=classResources(c);
+  const notes=[];
+  if(/roublard/.test(k))notes.push("🗡 <b>Attaque sournoise "+Math.ceil(lv/2)+"d6</b> — 1×/tour, arme de finesse ou à distance, si avantage ou allié au contact de la cible.");
+  if(/moine/.test(k)){notes.push("👊 <b>Arts martiaux d"+martialDie(lv)+"</b> — frappe à mains nues en action bonus après une attaque (DEX ou FOR).");notes.push("🛡 <b>Défense sans armure</b> : CA = 10 + DEX + SAG (sans armure ni bouclier).");}
+  if(/barbare/.test(k))notes.push("🛡 <b>Défense sans armure</b> : CA = 10 + DEX + CON (bouclier autorisé).");
+  if(/paladin/.test(k)&&lv>=2)notes.push("⚡ <b>Châtiment divin</b> — après une attaque de mêlée qui touche : +2d8 radiant (+1d8 par niveau d'emplacement au-delà du 1er, +1d8 contre mort-vivant/fiélon), dépense un emplacement.");
+  if(/rodeur|ranger/.test(k))notes.push("🎯 <b>Ennemi juré</b> & <b>Explorateur-né</b> : avantage pour pister et se souvenir d'infos sur l'ennemi juré ; terrain de prédilection.");
+  if(attacksPerAction(c)>1)notes.push("⚔ <b>Attaque supplémentaire</b> : "+attacksPerAction(c)+" attaques par action.");
+  if(!res.length&&!notes.length)return '<span class="tiny">Aucune aptitude de classe chiffrée pour cette classe à ce niveau (voir l\'arbre de progression).</span>';
+  let h=notes.map(n=>{const k=glossFind(n.replace(/<[^>]+>/g,""));return `<div class="trait-line">${n}${k?` <span class="feat-link" onclick="showFeat('${esc(k).replace(/'/g,"")}')" title="Voir l'effet">ℹ️</span>`:""}</div>`;}).join("");
+  res.forEach(([key,lbl,tot,rech,help])=>{
+    if(!tot){h+=`<div class="trait-line">${lbl} <span class="tiny">${esc(help)}</span></div>`;return;}
+    const u=Math.min(cresUsed(c,key),tot);
+    let pips="";
+    if(tot<=12){for(let i=0;i<tot;i++)pips+=`<span class="pip cres${i<u?' used':''}" onclick="toggleResPip('${key}',${i})" title="${i<u?'Récupérer':'Utiliser'}"></span>`;}
+    else pips=`<b>${tot-u}</b> / ${tot} <button class="mini" onclick="toggleResPip('${key}',${Math.max(0,u-1)})" title="Récupérer 1">−</button><button class="mini" onclick="toggleResPip('${key}',${u})" title="Utiliser 1">+</button>`;
+    const act=key==="loh"?` <button class="mini" onclick="layOnHands()">🤲 Soigner</button>`:key==="sw"?` <button class="mini" onclick="secondWind()">❤ Utiliser</button>`:"";
+    h+=`<div class="cres-row"><span class="cres-lbl feat-link" onclick="showFeat('${esc(lbl.replace(/^[^A-Za-zÀ-ÿ]+/,"")).replace(/'/g,"")}')" title="Voir l'effet">${lbl} ℹ️</span><span class="pips">${pips}</span>${act}<span class="tiny cres-rech">${rech==="court"?"↻ repos court":"↻ repos long"}</span><div class="tiny">${esc(help)}</div></div>`;
+  });
+  return h;
+}
+// Bonus offensifs de classe ajoutés au max du tour : {dmg, lines[]}
+function classOffense(c,w){
+  const k=_cn(c),lv=levelFromXP(c.xp),out={dmg:0,lines:[]};
+  if(/roublard/.test(k)&&w){const car=caracFor(c.equip.mainP).toLowerCase();if(w.car==="finesse"||w.dist||/finesse/.test(car)){const n=Math.ceil(lv/2);out.dmg+=n*6;out.lines.push(`+ Attaque sournoise ${n}d6 → ${n*6} — si avantage OU allié au contact de la cible ; arme de finesse ou à distance ; 1 fois par tour`);}}
+  if(/moine/.test(k)){const md=martialDie(lv),dx=modInt(c.stats.dex),fo=modInt(c.stats.for),m=Math.max(dx,fo);const hasOff=c.equip&&c.equip.mainS&&c.equip.mainS.trim();
+    if(!hasOff){out.dmg+=md+m;out.lines.push(`+ Arts martiaux : frappe à mains nues 1d${md}${m>=0?'+':''}${m} → ${md+m} — action bonus après avoir attaqué ; sans armure ni bouclier, main secondaire libre`);}}
+  if(/paladin/.test(k)&&lv>=2&&w&&!w.dist){const sl=(c.slots||{});let best=0;for(let nv=1;nv<=4;nv++){const s=sl[nv]||{};if((Number(s.total)||0)-(Number(s.used)||0)>0)best=nv;}
+    if(best){const n=Math.min(5,1+best);out.dmg+=n*8;out.lines.push(`+ Châtiment divin ${n}d8 → ${n*8} — sur une attaque de mêlée qui touche ; dépense l'emplacement de sort niv.${best} (+1d8 contre mort-vivant/fiélon)`);}}
+  return out;
+}
 function turnMaxDamage(c,d){
   if(!d||typeof dualWieldActive!=="function"||!dualWieldActive(c))return null;
   const w=matchTable(WEAPON_TABLE,c.equip.mainS); if(!w)return null;
@@ -2164,9 +2275,10 @@ function shortRest(){
   if(c.hd===undefined)c.hd=lv;
   const die=hitDie(c.classe);
   const con=Math.floor(((Number(c.stats.con)||10)-10)/2);
-  if(c.hd<=0){alert("🏕 Repos court : plus de dés de vie disponibles (récupérés au repos long).\nDés de vie : 0/"+lv);return;}
+  if(c.hd<=0){resetRes(c,'court');save(true);renderSheet();alert("🏕 Repos court : plus de dés de vie disponibles (récupérés au repos long).\nDés de vie : 0/"+lv);return;}
   const n=prompt("🏕 Repos court — combien de dés de vie dépenser ? (chacun = 1d"+die+" + "+((con>=0?"+":"")+con)+" CON)\nDés de vie disponibles : "+c.hd+"/"+lv+"\nPV actuels : "+cur+"/"+max,"1");
   if(n===null)return;
+  resetRes(c,'court');
   let nb=Math.max(0,Math.min(c.hd,parseInt(n)||0));
   if(nb===0)return;
   let heal=0, rolls=[];
@@ -2182,7 +2294,7 @@ function longRest(){
   c.pv=Number(c.pvmax)||0;
   const lv=levelFromXP(c.xp); if(c.hd===undefined)c.hd=lv;
   c.hd=Math.min(lv, c.hd + Math.max(1, Math.floor(lv/2)));
-  Object.keys(c.slots||{}).forEach(nv=>{if(c.slots[nv])c.slots[nv].used=0;});
+  Object.keys(c.slots||{}).forEach(nv=>{if(c.slots[nv])c.slots[nv].used=0;});resetRes(c,'long');
   save(true);renderSheet();renderDashboard();
   flashMsg("🌙 Repos long : PV & sorts restaurés");
 }
