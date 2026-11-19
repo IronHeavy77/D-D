@@ -619,6 +619,16 @@ function helmetBonus(name){
   if(o.includes("casque de fer")||o.includes("heaume")||o.includes("casque à cornes")||o.includes("casque a cornes"))return 1;
   return 0; // coiffe de cuir, diadèmes magiques = +0 CA
 }
+const HIT_DICE={
+ "barbare":12,"guerrier":10,"paladin":10,"rôdeur":10,"rodeur":10,
+ "barde":8,"clerc":8,"prêtre":8,"pretre":8,"druide":8,"moine":8,"roublard":8,"occultiste":8,"artificier":8,
+ "ensorceleur":6,"magicien":6
+};
+function hitDie(classe){
+  const o=(classe||"").toLowerCase();
+  for(const k in HIT_DICE){ if(o.includes(k))return HIT_DICE[k]; }
+  return 8; // défaut
+}
 function computeCA(c){
   const dex=modInt(c.stats.dex);
   const armObj=c.equip&&c.equip.torse?matchTable(ARMOR_TABLE,c.equip.torse):null;
