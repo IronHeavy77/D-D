@@ -113,6 +113,9 @@ input:focus,select:focus{outline:none;border-color:var(--gold2);box-shadow:0 0 0
 .combat .box{text-align:center;}
 .combat .box input{text-align:center;font-size:20px;font-weight:bold;}
 .ca-auto{background:#eef3e8 !important;color:#2f4b2f;}
+.auto-eq{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tour-max{color:#8a2f2f;margin-top:2px}
+.tour-max span{opacity:.75}
 .dmg-auto{color:#8a2f2f;font-weight:700}
 .th-tag{color:#8a2f2f;font-weight:600}
 .eqrow.locked{opacity:.6}
@@ -533,7 +536,7 @@ function loadQuests(){try{const q=JSON.parse(localStorage.getItem(QKEY));if(Arra
 function saveQuests(flash){localStorage.setItem(QKEY,JSON.stringify(quests));if(flash){const f=document.getElementById("flash");f.classList.add("show");clearTimeout(window._ft);window._ft=setTimeout(()=>f.classList.remove("show"),900);}}
 
 function load(){
-  try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.length){d.forEach(c=>{if(!c.saves)c.saves={};if(!c.skills)c.skills={};if(!c.attaques||!c.attaques.length)c.attaques=[{nom:"",bonus:"",degats:""}];if(!c.slots)c.slots={};if(c.style===undefined)c.style="";if(/caavylteradyn/i.test(c.nom||"")&&!c.souffle){c.souffle="feu";c.ascendance="Rouge";} /* ascendance rouge auto */if(c.castStat===undefined)c.castStat="";if(c.sorts===undefined)c.sorts="";if(c.genre===undefined)c.genre="h";if(c.portrait===undefined)c.portrait="";if(c.portraitH===undefined)c.portraitH="";if(c.portraitF===undefined)c.portraitF="";
+  try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.length){d.forEach(c=>{if(!c.saves)c.saves={};if(!c.skills)c.skills={};if(!c.attaques||!c.attaques.length)c.attaques=[{nom:"",bonus:"",degats:""}];if(!c.slots)c.slots={};if(c.style===undefined)c.style="";/* harmonisation armes : objets « Deux X » -> 2 lignes (main P + main S) */(function(){const inv=c.inv||[];for(let k=0;k<inv.length;k++){const o=inv[k];const m=/^\s*deux\s+(.+?)s?\s*$/i.exec(o.obj||"");if(!m)continue;const base=m[1].replace(/\b(\w+?)s\b/g,"$1");const nm=base.charAt(0).toUpperCase()+base.slice(1);const w=(Number(o.poids)||0);const half=Math.round((w/2)*100)/100||w;inv.splice(k,1,{obj:nm,qte:1,poids:half},{obj:nm+" (seconde)",qte:1,poids:half});if(c.equip){if(c.equip.mainP===o.obj){c.equip.mainP=nm;if(!c.equip.mainS)c.equip.mainS=nm+" (seconde)";}if(c.equip.mainS===o.obj)c.equip.mainS=nm+" (seconde)";}k++;}})();if(/caavylteradyn/i.test(c.nom||"")&&!c.souffle){c.souffle="feu";c.ascendance="Rouge";} /* ascendance rouge auto */if(c.castStat===undefined)c.castStat="";if(c.sorts===undefined)c.sorts="";if(c.genre===undefined)c.genre="h";if(c.portrait===undefined)c.portrait="";if(c.portraitH===undefined)c.portraitH="";if(c.portraitF===undefined)c.portraitF="";
       // Réparation : réinjecter les portraits H/F depuis la table de secours si manquants
       if((!c.portraitH||!c.portraitF) && typeof PORTRAIT_FALLBACK!=="undefined" && PORTRAIT_FALLBACK[c.nom]){
         if(!c.portraitH)c.portraitH=PORTRAIT_FALLBACK[c.nom].h||"";
@@ -922,6 +925,7 @@ function renderSheet(){
               </div>
             </div>`;}).join("");})()}
           <div class="tiny" style="margin-top:6px">Assignez un objet de l'inventaire à chaque emplacement — une icône apparaît en badge sur le portrait. Une arme <b>« à deux mains »</b> verrouille la main secondaire (ni bouclier ni seconde arme).</div>
+          <div class="auto-eq"><button class="mini" onclick="autoEquip('def')" title="Choisit dans l'inventaire la combinaison qui donne la meilleure CA (puis les meilleurs dégâts)">🛡 Auto : max défense</button><button class="mini" onclick="autoEquip('att')" title="Choisit dans l'inventaire la combinaison qui donne les meilleurs dégâts max du tour (puis la meilleure CA)">⚔ Auto : max attaque</button></div>
         </div>
       </div>
     </div>
@@ -963,9 +967,17 @@ function renderSheet(){
         <div class="box"><label>Classe d'armure</label>
           ${(()=>{const r=computeCA(c);return `<input type="number" value="${r.ca}" disabled class="ca-auto" title="${esc(r.note)}"><div class="ca-note tiny">${esc(r.note)}</div>`;})()}
           </div>
-        <div class="box"><label>Dégâts max (1 coup)</label>
+        <div class="box"><label>Dégâts max</label>
           ${(()=>{const d=maxDamage(c);if(!d)return `<input type="text" value="—" disabled class="ca-auto" title="Aucune arme équipée"><div class="ca-note tiny">aucune arme équipée</div>`;
-            return `<input type="text" value="${d.total}" disabled class="ca-auto dmg-auto" title="Meilleure arme : ${esc(d.nom)} — ${d.dice} max (${d.maxRoll}) ${d.modTxt} ${d.car}"><div class="ca-note tiny">${esc(d.nom)} · ${d.dice} max ${d.modTxt} ${d.car}${d.note?' · '+d.note:''}</div>`;})()}
+            const t=turnMaxDamage(c,d);
+            const val=t?t.total:d.total;
+            const main=`${esc(d.nom)} ${d.dice}${d.modTxt} ${d.car}${d.note?' ('+esc(d.note.replace(/^ · /,''))+')':''}`;
+            let setup;
+            if(t){const w=matchTable(WEAPON_TABLE,c.equip.mainS);const wm=(c.style==="deuxarmes"&&canPickStyle(c));
+              let k=w.car;if(k==="finesse")k=(modInt(c.stats.dex)>=modInt(c.stats.for))?"dex":"for";const m=modInt(c.stats[k]);
+              setup=`Action : ${main} → ${d.total}<br>+ Action bonus : ${esc(c.equip.mainS)} ${w.dmg}${wm?((m>=0?'+':'')+m):''}${wm?' (style deux armes)':' (sans mod.)'} → ${t.off}`;}
+            else setup=`${main} → 1 coup`;
+            return `<input type="text" value="${val}" disabled class="ca-auto dmg-auto" title="Dégâts max sur un tour"><div class="ca-note tiny">${setup}</div>`;})()}
           </div>
         <div class="box"><label>Initiative</label><input type="number" class="${signCls(c.init)}" value="${c.init}" oninput="upd('init',this.value)">
           ${(()=>{const stt=encStateFrom(travelWeight(c),c);const base=Number(c.init)||0;
@@ -1822,7 +1834,7 @@ function lockPlayerSheet(){
   sh.querySelectorAll("button").forEach(b=>{
     const kept=/−|\+|PV|Repos|Partager|Recevoir|Scanner|Copier|📷|📤|📥|♂|♀|QR/i.test(b.textContent||"");
     const onclick=(b.getAttribute("onclick")||"");
-    const keptFn=/castFromSheet|showSpell|endConcentration|partyHp|shortRest|longRest|showShareFor|dmImportPrompt|scanToImport|setGenre|renderQrInline|navigator\.clipboard|toggle/i.test(onclick);
+    const keptFn=/autoEquip|castFromSheet|showSpell|endConcentration|partyHp|shortRest|longRest|showShareFor|dmImportPrompt|scanToImport|setGenre|renderQrInline|navigator\.clipboard|toggle/i.test(onclick);
     if(!kept && !keptFn){ b.style.display="none"; }
   });
 }
@@ -1996,6 +2008,39 @@ function computeOffhand(c){
   const dmgMod=withMod?((m>=0?"+":"")+m):"";
   const degats=w.dmg+dmgMod+" "+w.type+(withMod?"":" (sans mod.)");
   return {nom:c.equip.mainS, bonus:(atk>=0?"+":"")+atk, degats, car:carKey.toUpperCase(), withMod};
+}
+// Dégâts max du TOUR en combat à deux armes : coup principal (max) + attaque bonus d'off-hand (max)
+// ===== Équipement automatique : max défense (CA) ou max attaque (dégâts du tour) =====
+function autoEquip(mode){
+  const c=data[current]; if(!c)return;
+  const opts=k=>[""].concat(c.inv.filter(o=>o.obj&&o.obj.trim()&&itemFitsSlot(k,o.obj)).map(o=>o.obj));
+  const P=opts("mainP"),S=opts("mainS"),T=opts("torse"),H=opts("tete");
+  const base=Object.assign({},c.equip||{});
+  let best=null;
+  for(const p of P)for(const s of S)for(const t of T)for(const h of H){
+    if(s&&s===p)continue;
+    if(p&&isTwoHanded(p)&&s)continue;
+    const e=Object.assign({},base,{mainP:p,mainS:s,torse:t,tete:h});
+    const cc=Object.assign({},c,{equip:e});
+    const ca=computeCA(cc).ca;
+    const d=maxDamage(cc); const tm=d?turnMaxDamage(cc,d):null; const dmg=d?(tm?tm.total:d.total):0;
+    const sc=mode==="def"?[ca,dmg]:[dmg,ca];
+    if(!best||sc[0]>best.sc[0]||(sc[0]===best.sc[0]&&sc[1]>best.sc[1]))best={e,sc,ca,dmg};
+  }
+  if(!best){flashMsg("Aucun équipement disponible dans l'inventaire");return;}
+  c.equip=best.e; save(true); renderSheet(); if(typeof lockPlayerSheet==="function")lockPlayerSheet();
+  flashMsg((mode==="def"?"🛡 Max défense":"⚔ Max attaque")+" : CA "+best.ca+" · dégâts max "+best.dmg
+    +" — "+[best.e.mainP||"mains nues",best.e.mainS,best.e.torse,best.e.tete].filter(Boolean).join(", "));
+}
+function turnMaxDamage(c,d){
+  if(!d||typeof dualWieldActive!=="function"||!dualWieldActive(c))return null;
+  const w=matchTable(WEAPON_TABLE,c.equip.mainS); if(!w)return null;
+  const mm=/(\d+)d(\d+)/.exec(w.dmg); if(!mm)return null;
+  let carKey=w.car; if(w.car==="finesse"){ carKey=(modInt(c.stats.dex)>=modInt(c.stats.for))?"dex":"for"; }
+  const m=modInt(c.stats[carKey]);
+  const withMod=(c.style==="deuxarmes" && canPickStyle(c));
+  const off=(+mm[1])*(+mm[2])+(withMod?m:0);
+  return {total:d.total+off, off, detail:d.total+" + "+off+" off-hand"+(withMod?" (style à deux armes)":" (sans mod.)")};
 }
 function maxDamage(c){
   const w=c.equip&&c.equip.mainP?matchTable(WEAPON_TABLE,c.equip.mainP):null;
